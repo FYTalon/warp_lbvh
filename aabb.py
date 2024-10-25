@@ -116,4 +116,3 @@ def centroid(box: aabb) -> vec3:
     )
 
     return c
-
