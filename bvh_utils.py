@@ -159,111 +159,111 @@ def transform_aabb_morton_kernel(
     idx = wp.tid()
 
     mortons[idx] = calculate(AABBs[idx], whole)
-#
-# @wp.kernel
-# def transform_morton64_kernel(
-#         mortons: wp.array(dtype=wpuint32),
-#         indices: wp.array(dtype=wpuint32),
-#         mortons64: wp.array(dtype=wpuint64)
-# ):
-#     idx = wp.tid()
-#
-#     mortons64[idx] = wpuint64(mortons[idx]) << wpuint64(32) | wpuint64(indices[idx])
-#
-# @wp.kernel
-# def init_nodes_kernel(
-#         nodes: wp.array(dtype=Node),
-#         offset: int,
-#         indices: wp.array(dtype=wpuint32)
-# ):
-#     idx = wp.tid()
-#     nodes[idx].left_idx = 0xFFFFFFFF
-#     nodes[idx].right_idx = 0xFFFFFFFF
-#     nodes[idx].parent_idx = 0xFFFFFFFF
-#     if idx >= offset:
-#         nodes[idx].object_idx = int(indices[idx - offset])
-#     else :
-#         nodes[idx].object_idx = 0xFFFFFFFF
-#
-# @wp.kernel
-# def init_bvh_kernel(
-#         flags: wp.array(dtype=wpuint32),
-#         nodes: wp.array(dtype=Node),
-#         aabbs: wp.array(dtype=aabb),
-#         offset: int
-# ):
-#     idx = wp.tid() + offset
-#
-#     parent = nodes[idx].parent_idx
-#     while parent != 0xFFFFFFFF:
-#         flag = wp.atomic_add(flags, parent, wpuint32(1))
-#         if flag == 0:
-#             break
-#         else :
-#             lidx = nodes[parent].left_idx
-#             ridx = nodes[parent].right_idx
-#             aabbs[parent] = merge(aabbs[lidx], aabbs[ridx])
-#             parent = nodes[parent].parent_idx
-#
-# # query object indices that potentially overlaps with query aabb.
-# @wp.func
-# def query_overlap(
-#         AABBs: wp.array(dtype=aabb),
-#         nodes: wp.array(dtype=Node),
-#         ansbuffer: wp.array(dtype=wpuint32),
-#         stackbuffer: wp.array(dtype=wpuint32),
-#         q_aabb: aabb,
-#         offset: int,
-#         count: int,
-#         stack_offset: int
-# ) -> int:
-#     start = stack_offset
-#     stackbuffer[stack_offset] = wpuint32(0)
-#     stack_offset += 1
-#     num_found = int(0)
-#
-#     while stack_offset > start and num_found < count:
-#         idx = stackbuffer[stack_offset]
-#         stack_offset -= 1
-#
-#         Lidx = nodes[idx].left_idx
-#         Ridx = nodes[idx].right_idx
-#         Oidx = nodes[idx].object_idx
-#
-#         if Oidx != 0xFFFFFFFF:
-#             ansbuffer[offset + num_found] = wpuint32(Oidx)
-#             num_found += 1
-#
-#         if Lidx != 0xFFFFFFFF and intersects(q_aabb, AABBs[Lidx]):
-#             stackbuffer[stack_offset] = wpuint32(Lidx)
-#             stack_offset += 1
-#
-#         if Ridx != 0xFFFFFFFF and intersects(q_aabb, AABBs[Ridx]):
-#             stackbuffer[stack_offset] = wpuint32(Ridx)
-#             stack_offset += 1
-#
-#     return num_found
-#
-# @wp.kernel
-# def query_overlap_kernel(
-#         AABBs: wp.array(dtype=aabb),
-#         nodes: wp.array(dtype=Node),
-#         ansbuffer: wp.array(dtype=wpuint32),
-#         num_found: wp.array(dtype=wpuint32),
-#         stackbuffer: wp.array(dtype=wpuint32),
-#         q_aabbs: wp.array(dtype=aabb),
-#         max_ans_count: int=64,
-#         max_stack_size: int=64,
-# ) -> int:
-#     idx = wp.tid()
-#
-#     num_found[idx] = wpuint32(query_overlap(
-#         AABBs,
-#         nodes,
-#         ansbuffer,
-#         stackbuffer,
-#         q_aabbs[idx],
-#         idx * max_ans_count,
-#         max_ans_count,
-#         idx * max_stack_size
-#     ))
+
+@wp.kernel
+def transform_morton64_kernel(
+        mortons: wp.array(dtype=wpuint32),
+        indices: wp.array(dtype=wpuint32),
+        mortons64: wp.array(dtype=wpuint64)
+):
+    idx = wp.tid()
+
+    mortons64[idx] = wpuint64(mortons[idx]) << wpuint64(32) | wpuint64(indices[idx])
+
+@wp.kernel
+def init_nodes_kernel(
+        nodes: wp.array(dtype=Node),
+        offset: int,
+        indices: wp.array(dtype=wpuint32)
+):
+    idx = wp.tid()
+    nodes[idx].left_idx = 0xFFFFFFFF
+    nodes[idx].right_idx = 0xFFFFFFFF
+    nodes[idx].parent_idx = 0xFFFFFFFF
+    if idx >= offset:
+        nodes[idx].object_idx = int(indices[idx - offset])
+    else :
+        nodes[idx].object_idx = 0xFFFFFFFF
+
+@wp.kernel
+def init_bvh_kernel(
+        flags: wp.array(dtype=wpuint32),
+        nodes: wp.array(dtype=Node),
+        aabbs: wp.array(dtype=aabb),
+        offset: int
+):
+    idx = wp.tid() + offset
+
+    parent = nodes[idx].parent_idx
+    while parent != 0xFFFFFFFF:
+        flag = wp.atomic_add(flags, parent, wpuint32(1))
+        if flag == 0:
+            break
+        else :
+            lidx = nodes[parent].left_idx
+            ridx = nodes[parent].right_idx
+            aabbs[parent] = merge(aabbs[lidx], aabbs[ridx])
+            parent = nodes[parent].parent_idx
+
+# query object indices that potentially overlaps with query aabb.
+@wp.func
+def query_overlap(
+        AABBs: wp.array(dtype=aabb),
+        nodes: wp.array(dtype=Node),
+        ansbuffer: wp.array(dtype=wpuint32),
+        stackbuffer: wp.array(dtype=wpuint32),
+        q_aabb: aabb,
+        offset: int,
+        count: int,
+        stack_offset: int
+) -> int:
+    start = stack_offset
+    stackbuffer[stack_offset] = wpuint32(0)
+    stack_offset += 1
+    num_found = int(0)
+
+    while stack_offset > start and num_found < count:
+        idx = stackbuffer[stack_offset]
+        stack_offset -= 1
+
+        Lidx = nodes[idx].left_idx
+        Ridx = nodes[idx].right_idx
+        Oidx = nodes[idx].object_idx
+
+        if Oidx != 0xFFFFFFFF:
+            ansbuffer[offset + num_found] = wpuint32(Oidx)
+            num_found += 1
+
+        if Lidx != 0xFFFFFFFF and intersects(q_aabb, AABBs[Lidx]):
+            stackbuffer[stack_offset] = wpuint32(Lidx)
+            stack_offset += 1
+
+        if Ridx != 0xFFFFFFFF and intersects(q_aabb, AABBs[Ridx]):
+            stackbuffer[stack_offset] = wpuint32(Ridx)
+            stack_offset += 1
+
+    return num_found
+
+@wp.kernel
+def query_overlap_kernel(
+        AABBs: wp.array(dtype=aabb),
+        nodes: wp.array(dtype=Node),
+        ansbuffer: wp.array(dtype=wpuint32),
+        num_found: wp.array(dtype=wpuint32),
+        stackbuffer: wp.array(dtype=wpuint32),
+        q_aabbs: wp.array(dtype=aabb),
+        max_ans_count: int=64,
+        max_stack_size: int=64,
+) -> int:
+    idx = wp.tid()
+
+    num_found[idx] = wpuint32(query_overlap(
+        AABBs,
+        nodes,
+        ansbuffer,
+        stackbuffer,
+        q_aabbs[idx],
+        idx * max_ans_count,
+        max_ans_count,
+        idx * max_stack_size
+    ))

@@ -1,15 +1,15 @@
 from common import *
 
 @wp.func
-def expand_bits(v: int) -> int:
-    v = (v * 0x00010001) & 0xFF0000FF
-    v = (v * 0x00000101) & 0x0F00F00F
-    v = (v * 0x00000011) & 0xC30C30C3
-    v = (v * 0x00000005) & 0x49249249
+def expand_bits(v: wpuint32) -> wpuint32:
+    v = (v * wpuint32(0x00010001)) & wpuint32(0xFF0000FF)
+    v = (v * wpuint32(0x00000101)) & wpuint32(0x0F00F00F)
+    v = (v * wpuint32(0x00000011)) & wpuint32(0xC30C30C3)
+    v = (v * wpuint32(0x00000005)) & wpuint32(0x49249249)
     return v
 
 @wp.func
-def morton_code(xyz: vec3) -> int:
+def morton_code(xyz: vec3) -> wpuint32:
     resolution = float(1024.0)
     # Clamp x, y, z coordinates to [0, resolution - 1]
     xyz.x = wp.min(wp.max(xyz.x * resolution, 0.0), resolution - 1.0)
@@ -17,12 +17,12 @@ def morton_code(xyz: vec3) -> int:
     xyz.z = wp.min(wp.max(xyz.z * resolution, 0.0), resolution - 1.0)
 
     # Expand bits for x, y, z
-    xx = expand_bits(int(xyz.x))
-    yy = expand_bits(int(xyz.y))
-    zz = expand_bits(int(xyz.z))
+    xx = expand_bits(wpuint32(xyz.x))
+    yy = expand_bits(wpuint32(xyz.y))
+    zz = expand_bits(wpuint32(xyz.z))
 
     # Combine the bits into a Morton code
-    return xx * 4 + yy * 2 + zz
+    return xx * wpuint32(4) + yy * wpuint32(2) + zz
 
 @wp.func
 def clz(x: wpuint32) -> int:
