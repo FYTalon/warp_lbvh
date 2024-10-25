@@ -9,7 +9,8 @@ def expand_bits(v: int) -> int:
     return v
 
 @wp.func
-def morton_code(xyz: vec3, resolution: float = 1024.0) -> int:
+def morton_code(xyz: vec3) -> int:
+    resolution = float(1024.0)
     # Clamp x, y, z coordinates to [0, resolution - 1]
     xyz.x = wp.min(wp.max(xyz.x * resolution, 0.0), resolution - 1.0)
     xyz.y = wp.min(wp.max(xyz.y * resolution, 0.0), resolution - 1.0)
@@ -37,9 +38,9 @@ def clz(x: wpuint32) -> int:
 def clzll(x: wpuint64) -> int:
     if x == 0:
         return 64
-    n = 0
-    while (x & 0x8000000000000000) == 0:
-        x <<= 1
+    n = int(0)
+    while (x & wpuint64(0x8000000000000000)) == 0:
+        x <<= wpuint64(1)
         n += 1
     return n
 
