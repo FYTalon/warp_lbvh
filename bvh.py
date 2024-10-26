@@ -11,7 +11,7 @@ def construct_internal_nodes(self, node_code, num_objects):
 
 class bvh:
     def __init__(self, objects: torch.tensor):
-        self.objects = objects.contiguous()
+        self.objects = objects.contiguous().cuda()
         self.AABBs = torch.empty(0)
         self.nodes = torch.empty(0)
 
@@ -34,31 +34,39 @@ class bvh:
 
         AABBs_t[num_internal_nodes:] = self.objects
 
-        aabb_whole = torch.stack(
+        aabb_whole_t = torch.stack(
             (
                 torch.max(AABBs_t[:, 0, :], dim=0).values,
                 torch.min(AABBs_t[:, 1, :], dim=0).values
             )
         )
 
-        mortons = wp.zeros(shape=num_objects, dtype=wpuint32)
+        aabb_whole = aabb(
+            aabb_whole_t[0, 0], aabb_whole_t[0, 1], aabb_whole_t[0, 2],
+            aabb_whole_t[1, 0], aabb_whole_t[1, 1], aabb_whole_t[1, 2],
+        )
+
+        mortons = wp.zeros(shape=num_objects, dtype=wp.int32)
+
+        tmp = wp.from_torch(self.objects, dtype=aabb)
 
         wp.launch(
             kernel=transform_aabb_morton_kernel,
             dim=(num_objects,),
             inputs=[
-                wp.from_torch(self.objects, dtype=aabb),
+                tmp,
                 mortons,
                 aabb_whole,
             ]
         )
         wp.synchronize()
 
-        mortons_t = wp.to_torch(mortons, dtype=torch.uint32)
+        mortons_t = wp.to_torch(mortons)
 
         mortons_sort_t, indices_t = torch.sort(mortons_t)
+        indices_t = indices_t.to(dtype=torch.int32)
 
-        AABBs_t[num_internal_nodes:] = AABBs_t[num_internal_nodes:][indices]
+        AABBs_t[num_internal_nodes:] = AABBs_t[num_internal_nodes:][indices_t]
 
         mortons64 = wp.zeros(shape=num_objects, dtype=wpuint64)
 
@@ -68,7 +76,7 @@ class bvh:
             kernel=transform_morton64_kernel,
             dim=(num_objects,),
             inputs=[
-                mortons,
+                wp.from_torch(mortons_sort_t),
                 indices,
                 mortons64
             ]

@@ -4,12 +4,16 @@ from bvh import *
 
 wp.init()
 
+wp.set_device("cuda")
+
+torch.random.manual_seed(0)
+
 N = 10
 
 pts = torch.rand(N, 3) * N
 
-box = torch.stack((pts + 1, pts - 1), dim=-1).permute(0, 2, 1)
-qbox = torch.stack((pts, pts), dim=-1).permute(0, 2, 1)
+box = torch.stack((pts + 1, pts - 1), dim=-1).permute(0, 2, 1).contiguous().cuda()
+qbox = torch.stack((pts, pts), dim=-1).permute(0, 2, 1).contiguous().cuda()
 
 bvh_test = bvh(box)
 
@@ -28,7 +32,9 @@ wp.launch(
         ansbuffer,
         num_found,
         stackbuffer,
-        wp.from_torch(qbox, dtype=aabb)
+        wp.from_torch(qbox, dtype=aabb),
+        64,
+        64
     ]
 )
 wp.synchronize()

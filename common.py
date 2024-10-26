@@ -10,3 +10,4 @@ vec3 = wp.vec(length=3, dtype=wpfloat)
 pair = wp.vec(length=2, dtype=wpuint32)
 
 infty = 1e12
+Err = wpuint32(0xFFFFFFFF)

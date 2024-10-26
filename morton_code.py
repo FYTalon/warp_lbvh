@@ -1,5 +1,7 @@
 from common import *
 
+TOP = wpuint64(1 << 63)
+
 @wp.func
 def expand_bits(v: wpuint32) -> wpuint32:
     v = (v * wpuint32(0x00010001)) & wpuint32(0xFF0000FF)
@@ -39,7 +41,7 @@ def clzll(x: wpuint64) -> int:
     if x == 0:
         return 64
     n = int(0)
-    while (x & wpuint64(0x8000000000000000)) == 0:
+    while (x & TOP) == 0:
         x <<= wpuint64(1)
         n += 1
     return n

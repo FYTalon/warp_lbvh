@@ -3,20 +3,10 @@ from aabb import *
 
 @wp.struct
 class Node:
-    parent_idx: int
-    left_idx: int
-    right_idx: int
-    object_idx: int
-
-@wp.struct
-class BasicDeviceBVH:
-    num_nodes: int   # number of internal nodes + leaves
-    num_objects: int  # number of objects (same as leaves)
-
-    # Nodes, AABBs, and objects are represented as arrays on the device
-    nodes: wp.array(dtype=Node)  # array of nodes
-    aabbs: wp.array(dtype=aabb)  # array of AABBs
-    objects: wp.array(dtype=wpuint32)  # array of object indices
+    parent_idx: wpuint32
+    left_idx: wpuint32
+    right_idx: wpuint32
+    object_idx: wpuint32
 
 
 @wp.func
@@ -27,6 +17,7 @@ def determine_range(node_code: wp.array(dtype=wpuint64), num_leaves: int, idx: i
 
     # Determine direction of the range
     self_code = node_code[idx]
+
     L_delta = common_upper_bits(self_code, node_code[idx - 1])
     R_delta = common_upper_bits(self_code, node_code[idx + 1])
 
@@ -77,8 +68,8 @@ def determine_range(node_code: wp.array(dtype=wpuint64), num_leaves: int, idx: i
 @wp.func
 def find_split(node_code: wp.array(dtype=wpuint64), first: wpuint32, last: wpuint32) -> wpuint32:
     # Get Morton codes of the first and last nodes
-    first_code = node_code[first]
-    last_code = node_code[last]
+    first_code = node_code[int(first)]
+    last_code = node_code[int(last)]
 
     # If first and last codes are the same, return the midpoint
     if first_code == last_code:
@@ -91,17 +82,18 @@ def find_split(node_code: wp.array(dtype=wpuint64), first: wpuint32, last: wpuin
     split = first
     stride = last - first
 
-    while True:
+    while stride > 0:
+        stride_pre = stride
         stride = (stride + wpuint32(1)) >> wpuint32(1)
         middle = split + stride
 
         if middle < last:
-            delta = common_upper_bits(first_code, node_code[middle])
+            delta = common_upper_bits(first_code, node_code[int(middle)])
             if delta > delta_node:
                 split = middle
 
-        if stride <= 1:
-            break
+        if stride_pre == wpuint32(1):
+            stride = wpuint32(0)
 
     return split
 
@@ -111,28 +103,25 @@ def construct_internal_nodes_kernel(nodes: wp.array(dtype=Node),  # node array
                                     num_objects: int):
     idx = wp.tid()  # Get thread id, equivalent to `idx` in the CUDA lambda
 
-    if idx >= num_objects - 1:
-        return
-
     # Set the node as an internal node (object_idx == 0xFFFFFFFF)
-    nodes[idx].object_idx = 0xFFFFFFFF
+    nodes[idx].object_idx = Err
 
     # Determine the range and find the split
     ij = determine_range(node_code, num_objects, idx)
     gamma = find_split(node_code, ij[0], ij[1])
 
     # Set left and right child nodes
-    nodes[idx].left_idx = int(gamma)
-    nodes[idx].right_idx = int(gamma) + 1
+    nodes[idx].left_idx = gamma
+    nodes[idx].right_idx = gamma + wpuint32(1)
 
     if min(ij[0], ij[1]) == gamma:
-        nodes[idx].left_idx += num_objects - 1
+        nodes[idx].left_idx += wpuint32(num_objects - 1)
     if max(ij[0], ij[1]) == gamma + wpuint32(1):
-        nodes[idx].right_idx += num_objects - 1
+        nodes[idx].right_idx += wpuint32(num_objects - 1)
 
     # Set parent index for the left and right child nodes
-    nodes[nodes[idx].left_idx].parent_idx = idx
-    nodes[nodes[idx].right_idx].parent_idx = idx
+    nodes[int(nodes[idx].left_idx)].parent_idx = wpuint32(idx)
+    nodes[int(nodes[idx].right_idx)].parent_idx = wpuint32(idx)
 
 @wp.func
 def calculate(box: aabb, whole: aabb) -> wpuint32:
@@ -153,16 +142,16 @@ def calculate(box: aabb, whole: aabb) -> wpuint32:
 @wp.kernel
 def transform_aabb_morton_kernel(
         AABBs: wp.array(dtype=aabb),
-        mortons: wp.array(dtype=wpuint32),
+        mortons: wp.array(dtype=wp.int32),
         whole: aabb
 ):
     idx = wp.tid()
 
-    mortons[idx] = calculate(AABBs[idx], whole)
+    mortons[idx] = wp.int32(calculate(AABBs[idx], whole))
 
 @wp.kernel
 def transform_morton64_kernel(
-        mortons: wp.array(dtype=wpuint32),
+        mortons: wp.array(dtype=wp.int32),
         indices: wp.array(dtype=wpuint32),
         mortons64: wp.array(dtype=wpuint64)
 ):
@@ -177,13 +166,13 @@ def init_nodes_kernel(
         indices: wp.array(dtype=wpuint32)
 ):
     idx = wp.tid()
-    nodes[idx].left_idx = 0xFFFFFFFF
-    nodes[idx].right_idx = 0xFFFFFFFF
-    nodes[idx].parent_idx = 0xFFFFFFFF
+    nodes[idx].left_idx = Err
+    nodes[idx].right_idx = Err
+    nodes[idx].parent_idx = Err
     if idx >= offset:
-        nodes[idx].object_idx = int(indices[idx - offset])
+        nodes[idx].object_idx = indices[idx - offset]
     else :
-        nodes[idx].object_idx = 0xFFFFFFFF
+        nodes[idx].object_idx = Err
 
 @wp.kernel
 def init_bvh_kernel(
@@ -194,16 +183,15 @@ def init_bvh_kernel(
 ):
     idx = wp.tid() + offset
 
-    parent = nodes[idx].parent_idx
-    while parent != 0xFFFFFFFF:
-        flag = wp.atomic_add(flags, parent, wpuint32(1))
-        if flag == 0:
-            break
-        else :
-            lidx = nodes[parent].left_idx
-            ridx = nodes[parent].right_idx
+    parent = int(nodes[idx].parent_idx)
+    flag = int(1)
+    while parent != int(Err) and flag == 1:
+        flag = int(wp.atomic_add(flags, parent, wpuint32(1)))
+        if flag == 1:
+            lidx = int(nodes[parent].left_idx)
+            ridx = int(nodes[parent].right_idx)
             aabbs[parent] = merge(aabbs[lidx], aabbs[ridx])
-            parent = nodes[parent].parent_idx
+            parent = int(nodes[parent].parent_idx)
 
 # query object indices that potentially overlaps with query aabb.
 @wp.func
@@ -219,28 +207,27 @@ def query_overlap(
 ) -> int:
     start = stack_offset
     stackbuffer[stack_offset] = wpuint32(0)
-    stack_offset += 1
     num_found = int(0)
 
-    while stack_offset > start and num_found < count:
-        idx = stackbuffer[stack_offset]
+    while stack_offset >= start and num_found < count:
+        idx = int(stackbuffer[stack_offset])
         stack_offset -= 1
 
         Lidx = nodes[idx].left_idx
         Ridx = nodes[idx].right_idx
         Oidx = nodes[idx].object_idx
 
-        if Oidx != 0xFFFFFFFF:
-            ansbuffer[offset + num_found] = wpuint32(Oidx)
+        if Oidx != Err:
+            ansbuffer[offset + num_found] = Oidx
             num_found += 1
 
-        if Lidx != 0xFFFFFFFF and intersects(q_aabb, AABBs[Lidx]):
-            stackbuffer[stack_offset] = wpuint32(Lidx)
+        if Lidx != Err and intersects(q_aabb, AABBs[int(Lidx)]):
             stack_offset += 1
+            stackbuffer[stack_offset] = Lidx
 
-        if Ridx != 0xFFFFFFFF and intersects(q_aabb, AABBs[Ridx]):
-            stackbuffer[stack_offset] = wpuint32(Ridx)
+        if Ridx != Err and intersects(q_aabb, AABBs[int(Ridx)]):
             stack_offset += 1
+            stackbuffer[stack_offset] = Ridx
 
     return num_found
 
