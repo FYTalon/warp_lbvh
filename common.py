@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import warp as wp
-
+wp.set_device("cuda:0")
 wpfloat = wp.float32
 wpuint32 = wp.uint32
 wpuint64 = wp.uint64
