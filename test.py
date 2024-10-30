@@ -21,7 +21,7 @@ bvh_test_ = bvh(box)
 bvh_test_.contruct()
 bvh_test = bvh(box)
 t0 = time.time()
-bvh_test.contruct()
+bvh_test.construct()
 t1 = time.time()
 print("construct bvh", f"{t1 - t0:.6f}")
 

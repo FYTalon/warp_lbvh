@@ -16,7 +16,7 @@ class bvh:
         self.nodes = torch.empty(0)
 
 
-    def contruct(self):
+    def construct(self):
 
         if self.objects.shape[0] == 0:
             return
