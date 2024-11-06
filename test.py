@@ -3,7 +3,7 @@ import warp as wp
 import time
 
 wp.init()
-from warp_lbvh.bvh import *
+from bvh import *
 
 
 
