@@ -1,5 +1,5 @@
-from morton_code import *
-from aabb import *
+from warp_lbvh.morton_code import *
+from warp_lbvh.aabb import *
 
 @wp.struct
 class Node:

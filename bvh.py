@@ -1,4 +1,4 @@
-from bvh_utils import *
+from warp_lbvh.bvh_utils import *
 
 # Wrapper function to launch the kernel
 def construct_internal_nodes(self, node_code, num_objects):

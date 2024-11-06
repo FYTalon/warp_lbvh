@@ -1,4 +1,4 @@
-from common import *
+from warp_lbvh.common import *
 
 aabb = wp.mat(shape=(2, 3), dtype=wpfloat)
 

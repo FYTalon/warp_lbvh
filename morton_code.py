@@ -1,4 +1,4 @@
-from common import *
+from warp_lbvh.common import *
 
 TOP = wpuint64(1 << 63)
 
