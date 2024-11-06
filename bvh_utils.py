@@ -128,13 +128,13 @@ def calculate(box: aabb, whole: aabb) -> wpuint32:
     p = centroid(box)
 
     # Normalize the point relative to the whole AABB
-    p.x -= whole[1, 0]  # subtract lower.x
-    p.y -= whole[1, 2]  # subtract lower.y
-    p.z -= whole[1, 2]  # subtract lower.z
+    p.x -= whole[0, 0]  # subtract lower.x
+    p.y -= whole[0, 2]  # subtract lower.y
+    p.z -= whole[0, 2]  # subtract lower.z
 
-    p.x /= (whole[0, 0] - whole[1, 0])  # normalize based on AABB width
-    p.y /= (whole[0, 1] - whole[1, 1])  # normalize based on AABB height
-    p.z /= (whole[0, 2] - whole[1, 2])  # normalize based on AABB depth
+    p.x /= (whole[1, 0] - whole[0, 0])  # normalize based on AABB width
+    p.y /= (whole[1, 1] - whole[0, 1])  # normalize based on AABB height
+    p.z /= (whole[1, 2] - whole[0, 2])  # normalize based on AABB depth
 
     # Return the Morton code for the normalized point
     return wpuint32(morton_code(p))
@@ -236,7 +236,7 @@ def query_overlap_kernel(
         AABBs: wp.array(dtype=aabb),
         nodes: wp.array(dtype=Node),
         ansbuffer: wp.array(dtype=wpuint32),
-        num_found: wp.array(dtype=wpuint32),
+        num_found: wp.array(dtype=wp.int32),
         stackbuffer: wp.array(dtype=wpuint32),
         q_aabbs: wp.array(dtype=aabb),
         max_ans_count: int=64,
@@ -244,7 +244,7 @@ def query_overlap_kernel(
 ) -> int:
     idx = wp.tid()
 
-    num_found[idx] = wpuint32(query_overlap(
+    num_found[idx] = query_overlap(
         AABBs,
         nodes,
         ansbuffer,
@@ -253,4 +253,4 @@ def query_overlap_kernel(
         idx * max_ans_count,
         max_ans_count,
         idx * max_stack_size
-    ))
+    )

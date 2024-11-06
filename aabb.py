@@ -11,11 +11,11 @@ def intersects(lhs: aabb, rhs: aabb) -> bool:
     # lhs is the aabb matrix for the first box (2x3 matrix)
     # rhs is the aabb matrix for the second box (2x3 matrix)
 
-    lhs_upper = get_row(lhs, 0)
-    lhs_lower = get_row(lhs, 1)
+    lhs_upper = get_row(lhs, 1)
+    lhs_lower = get_row(lhs, 0)
 
-    rhs_upper = get_row(rhs, 0)
-    rhs_lower = get_row(rhs, 1)
+    rhs_upper = get_row(rhs, 1)
+    rhs_lower = get_row(rhs, 0)
 
     # Check for intersection based on axis-aligned bounding box rules
     if lhs_upper.x < rhs_lower.x or rhs_upper.x < lhs_lower.x:
@@ -30,10 +30,10 @@ def intersects(lhs: aabb, rhs: aabb) -> bool:
 @wp.func
 def merge(lhs: aabb, rhs: aabb) -> aabb:
     # Extract the upper and lower bounds from lhs and rhs
-    lhs_upper = get_row(lhs, 0)  # vec3 for lhs upper bound
-    lhs_lower = get_row(lhs, 1)  # vec3 for lhs lower bound
-    rhs_upper = get_row(rhs, 0)  # vec3 for rhs upper bound
-    rhs_lower = get_row(rhs, 1)  # vec3 for rhs lower bound
+    lhs_upper = get_row(lhs, 1)  # vec3 for lhs upper bound
+    lhs_lower = get_row(lhs, 0)  # vec3 for lhs lower bound
+    rhs_upper = get_row(rhs, 1)  # vec3 for rhs upper bound
+    rhs_lower = get_row(rhs, 0)  # vec3 for rhs lower bound
 
     # Create a new aabb for the merged result
     merged_upper = vec3(
@@ -50,20 +50,20 @@ def merge(lhs: aabb, rhs: aabb) -> aabb:
 
     # Return the merged AABB as a 2x3 matrix
     ret = aabb(wpfloat(0.0))
-    ret[1, 0] = merged_lower.x
-    ret[1, 1] = merged_lower.y
-    ret[1, 2] = merged_lower.z
-    ret[0, 0] = merged_upper.x
-    ret[0, 1] = merged_upper.y
-    ret[0, 2] = merged_upper.z
+    ret[0, 0] = merged_lower.x
+    ret[0, 1] = merged_lower.y
+    ret[0, 2] = merged_lower.z
+    ret[1, 0] = merged_upper.x
+    ret[1, 1] = merged_upper.y
+    ret[1, 2] = merged_upper.z
 
     return ret
 
 @wp.func
 def mindist(lhs: aabb, rhs: vec3) -> wpfloat:
     # Extract the upper and lower bounds from lhs
-    lhs_upper = get_row(lhs, 0)
-    lhs_lower = get_row(lhs, 1)
+    lhs_upper = get_row(lhs, 1)
+    lhs_lower = get_row(lhs, 0)
 
     # Calculate the minimum distance between point and AABB
     dx = wp.min(lhs_upper.x, wp.max(lhs_lower.x, rhs.x)) - rhs.x
@@ -76,8 +76,8 @@ def mindist(lhs: aabb, rhs: vec3) -> wpfloat:
 @wp.func
 def minmaxdist(lhs: aabb, rhs: vec3) -> wpfloat:
     # Extract the lower and upper bounds from lhs
-    lhs_upper = get_row(lhs, 0)
-    lhs_lower = get_row(lhs, 1)
+    lhs_upper = get_row(lhs, 1)
+    lhs_lower = get_row(lhs, 0)
 
     # Calculate the squared distances for rm_sq and rM_sq
     rm_sq = vec3(
@@ -114,8 +114,8 @@ def minmaxdist(lhs: aabb, rhs: vec3) -> wpfloat:
 def centroid(box: aabb) -> vec3:
     # Extract the upper and lower bounds from the box
     # upper = box.get_row(0)
-    upper = get_row(box, 0)
-    lower = get_row(box, 1)
+    upper = get_row(box, 1)
+    lower = get_row(box, 0)
 
     # Calculate the centroid
     c = vec3(

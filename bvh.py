@@ -36,8 +36,8 @@ class bvh:
 
         aabb_whole_t = torch.stack(
             (
-                torch.max(AABBs_t[:, 0, :], dim=0).values,
-                torch.min(AABBs_t[:, 1, :], dim=0).values
+                torch.min(AABBs_t[:, 0, :], dim=0).values,
+                torch.max(AABBs_t[:, 1, :], dim=0).values
             )
         )
 
